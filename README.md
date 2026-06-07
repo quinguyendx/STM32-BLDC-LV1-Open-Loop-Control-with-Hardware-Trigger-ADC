@@ -1,4 +1,3 @@
-# STM32-BLDC-Open-Loop-Control-with-Hardware-Trigger-ADC
 Dự án triển khai thuật toán điều khiển động cơ BLDC vòng hở (Open-Loop) sử dụng vi điều khiển STM32.
 
 ## Kỹ Thuật Phần Cứng & Ngoại Vi Áp Dụng
