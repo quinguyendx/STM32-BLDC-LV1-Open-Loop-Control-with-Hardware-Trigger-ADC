@@ -9,17 +9,17 @@ Dự án triển khai thuật toán điều khiển động cơ BLDC vòng hở 
 
 | Ngoại vi | Chân MCU | Chức năng |
 | :--- | :--- | :--- |
-| ** | `PA3` | Đọc biến trở cấu hình **Dead-time** |
-| ** | `PA4` | Đọc biến trở điều khiển **Tốc độ (Speed)** |
-| ** | `PA5` | Giám sát phản hồi **PWM High-Side** |
-| **GPIO Input** | `PB0` | Nút nhấn điều khiển **Start / Stop / Reset** |
+| **ADC1** | `PA3` | Đọc biến trở cấu hình **Dead-time** |
+| **ADC1** | `PA4` | Đọc biến trở điều khiển Tốc độ chuyển step |
+| **ADC1** | `PA5` | Đọc biến trở điều khiển **PWM** |
+| **GPIO Input** | `PB0` | Nút nhấn chuyển **Start / Stop / Reset** |
 | **TIM1 (PWM High)** | `PA8, PA9, PA10` | Ngõ ra PWM Phase U, V, W (High-Side) |
-| **TIM1 (PWM Low)** | `PB13, PB14, PB15`| U, V, W (Low-Side) |
+| **GPIO Output** | `PB13, PB14, PB15`| U, V, W (Low-Side) |
 
 ```c
 // Bảng tra LUT 6 bước chuyển mạch BLDC mẫu
 const uint8_t BLDC_LUT[6] = { ... };
 
 // Cấu hình Timer Trigger cho ADC trong hàm Init
-hadc1.Instance->CR2 |= ADC_CR2_JEXTTRIG; // Kích hoạt ngắt ngoại vi cho Injected Channels
-hadc1.Instance->CR2 |= ADC_CR2_JEXTSEL_0; // Chọn TIM1_CC4 làm nguồn Trigger
+ADC_CR2_JEXTTRIG; // Kích hoạt ngắt ngoại vi cho Injected Channels
+ADC_CR2_JEXTSEL_0; // Chọn TIM1_CC4 làm nguồn Trigger
