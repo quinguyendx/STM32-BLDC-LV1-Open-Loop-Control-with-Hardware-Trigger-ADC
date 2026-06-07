@@ -3,6 +3,7 @@ Dự án triển khai thuật toán điều khiển động cơ BLDC vòng hở 
 
 ## Kỹ Thuật Phần Cứng & Ngoại Vi Áp Dụng
 * **6-Step Commutation (LUT):** Sử dụng bảng tra trạng thái bằng mảng để chuyển mạch động cơ.
+* **Hardware Trigger ADC:** Dùng sự kiện `TIM1_CC4` để kích hoạt bộ ADC1 tự động lấy mẫu.
 
 ## Sơ Đồ Chân:
 
