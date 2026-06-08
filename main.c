@@ -6,11 +6,13 @@ void ADC1_2_IRQHandler(void);
 void gpioSetUp();
 void adcSetUp();
 void timer1SetUp();
-void start();
+void setState();
+void setStep();
 
 volatile uint16_t deathTimeIQR=0, speedIQR=0, pwmIQR=0;
 volatile uint32_t dummy_reg = 0;
 uint8_t step = 0;
+uint8_t state = 0;  // Stop - Reset - Loop - OverStep(6)
 
 volatile uint32_t* const LUT_HighSide_Reg[8] = {
     &TIM1->CCR1, // STEP 1: Pha U chạy PWM
@@ -38,69 +40,93 @@ int main(void){
   HAL_Init();
   SystemClock_72MHz_Config();
   MX_GPIO_Init();
-  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN|RCC_APB2ENR_IOPAEN
-  			   | RCC_APB2ENR_TIM1EN
-  			   | RCC_APB2ENR_AFIOEN | RCC_APB2ENR_IOPBEN;
-  RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN|RCC_APB2ENR_IOPAEN| RCC_APB2ENR_IOPBEN;
   	gpioSetUp();
   	adcSetUp();
   	timer1SetUp();
-  	start();
+  	GPIOC->BSRR=(1<<13);
 
   while(1){
-	  __disable_irq();
-	  uint16_t deathTime = deathTimeIQR;
-	  uint16_t speed = speedIQR;
-	  uint16_t pwm = pwmIQR;
-	  __enable_irq();
-
-	  (!((GPIOB->IDR>>0)&1))?(GPIOC->BRR=(1<<13)):(GPIOC->BSRR=(1<<13));
-
-	  TIM1->CCR1 = 0;
-	  TIM1->CCR2 = 0;
-	  TIM1->CCR3 = 0;
-
-	  HAL_Delay((deathTime * 500)/4095);
-	  for(volatile int i=0; i<100; i++);
-
-	  GPIOB->BSRR = LUT_LowSide[step];
-	  *LUT_HighSide_Reg[step] = pwm;
-
-	  step++;
-	  if(step>=6) step=0;
-
-	  if(!((GPIOB->IDR>>0)&1)){
-		  TIM1->CCR1 = 0;
-		  TIM1->CCR2 = 0;
-		  TIM1->CCR3 = 0;
+	  switch(state){
+	  case 0:   // Stop
+		  TIM1->CCR1 = 0; TIM1->CCR2 = 0; TIM1->CCR3 = 0;
 		  GPIOB->BSRR = LUT_LowSide[7];
-		  while(!((GPIOB->IDR>>0)&1));
-		  start();
+		  while((GPIOB->IDR>>0)&1) HAL_Delay(2);
+		  setState();
+		  break;
+	  case 1:   // Reset
+		  TIM1->CCR1=0; TIM1->CCR2=0; TIM1->CCR3=0;
+		  for(volatile int i=0; i<100; i++);
+		  GPIOB->BSRR = LUT_LowSide[6];
+		  while((GPIOB->IDR>>0)&1) HAL_Delay(2);
+		  setState();
+		  break;
+	  case 2:   // Loop
+		  while((GPIOB->IDR>>0)&1){
+			  __disable_irq();
+			  uint16_t deathTime = deathTimeIQR;
+			  uint16_t speed = speedIQR;
+			  uint16_t pwm = pwmIQR;
+			  __enable_irq();
+
+			  TIM1->CCR1 = 0; TIM1->CCR2 = 0; TIM1->CCR3 = 0;
+			  HAL_Delay((deathTime * 500)/4095);
+			  for(volatile int i=0; i<10; i++);
+
+			  GPIOB->BSRR = LUT_LowSide[step];
+			  *LUT_HighSide_Reg[step] = pwm;
+
+			  step++;
+			  if(step>=6) step=0;
+			  HAL_Delay((speed*1500)/4095); HAL_Delay(20);
+		  }
+		  setState();
+		  break;
+	  case 3:   // OverStep
+		  while((GPIOB->IDR>>0)&1){
+			  __disable_irq();
+			  uint16_t pwm = pwmIQR;
+			  __enable_irq();
+			  GPIOB->BSRR = LUT_LowSide[step];
+			  *LUT_HighSide_Reg[step] = pwm;
+			  if(! ((GPIOB->IDR>>1)&1)) setStep();
+			  HAL_Delay(2);
+		  }
+		  setState();
+		  break;
+	  default:
+		  state=0;
+		  break;
 	  }
-	  HAL_Delay((speed*1500)/4095); HAL_Delay(20);
+	  HAL_Delay(1);
   }
 }
 /////////////////////////////// CHƯƠNG TRÌNH CON ///////////////////////////////
 
-void start(){
-	HAL_Delay(100);
-	while(1){
-	    if(!((GPIOB->IDR>>0)&1)){
-	  	GPIOC->BRR=(1<<13);
-	  	GPIOB->BSRR = LUT_LowSide[6];
-	  	while(!((GPIOB->IDR>>0)&1));
-	    break;
-	    }else GPIOC->BSRR=(1<<13);
-	    HAL_Delay(100);
-	 }
-	 while(1){
-	  	if(!((GPIOB->IDR>>0)&1)){
-	  	GPIOC->BRR=(1<<13);
-	  	while(!((GPIOB->IDR>>0)&1));
-	  	break;
-	  	}else GPIOC->BSRR=(1<<13);
-	  	HAL_Delay(100);
-	 }
+void setStep(){
+	GPIOC->BRR = (1<<13);
+	step++;
+	(step>=6)?(step=0):(step);
+	while(!((GPIOB->IDR>>1)&1)) HAL_Delay(2);
+	TIM1->CCR1=0; TIM1->CCR2=0; TIM1->CCR3=0;
+	for(volatile int i=0; i<10; i++);
+	GPIOB->BSRR = LUT_LowSide[6];
+	for(volatile int i=0; i<100; i++);
+	GPIOC->BSRR = (1<<13);
+}
+
+void setState(){
+	TIM1->CCR1 = 0; TIM1->CCR2 = 0; TIM1->CCR3 = 0;
+	GPIOB->BSRR = LUT_LowSide[7];
+	GPIOC->BRR = (1<<13);
+	state++;
+	(state>=3)?(state=0):(state);
+	while(!((GPIOB->IDR>>0)&1)){
+		if(! ((GPIOB->IDR>>1)&1)) state = 3;
+		while(!((GPIOB->IDR>>1)&1)) HAL_Delay(2);
+		step=0;
+	}
+	GPIOC->BSRR = (1<<13);
 }
 
 void gpioSetUp(){
@@ -110,6 +136,8 @@ void gpioSetUp(){
     //============ 2. DIGITAL MCU ============//
     GPIOB->CRL = (GPIOB->CRL & ~(0xF << 0)) | (0b1000 << 0); // PB0 IN
     GPIOB->BSRR = (1 << 0);
+    GPIOB->CRL = (GPIOB->CRL &~(0xF << 4)) | (0b1000 << 4);
+    GPIOB->BSRR = (1 << 1);
     GPIOC->CRH = (GPIOC->CRH & ~(0xF << 20)) | (0b0010 << 20); // PC13 OUT
 
     //============ 3. ALTERNATE FUNCTION ============//
