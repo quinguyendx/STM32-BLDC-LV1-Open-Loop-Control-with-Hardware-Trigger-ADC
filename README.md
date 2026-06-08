@@ -11,7 +11,8 @@ Dự án triển khai thuật toán điều khiển động cơ BLDC vòng hở 
 | **ADC1** | `PA3` | Đọc biến trở cấu hình **Dead-time** |
 | **ADC1** | `PA4` | Đọc biến trở điều khiển Tốc độ chuyển step |
 | **ADC1** | `PA5` | Đọc biến trở điều khiển **PWM** |
-| **GPIO Input** | `PB0` | Nút nhấn chuyển **Start / Stop / Reset** |
+| **GPIO Input** | `PB0` | Nút nhấn chuyển **Start/Stop/Reset/OverStep(PB0+PB1)** |
+| **GPIO Input** | `PB1` | Nút nhấn chuyển STEP(6) |
 | **TIM1 (PWM High)** | `PA8, PA9, PA10` | Ngõ ra PWM Phase U, V, W (High-Side) |
 | **GPIO Output** | `PB13, PB14, PB15`| U, V, W (Low-Side) |
 
